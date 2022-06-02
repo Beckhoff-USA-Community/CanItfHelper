@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_RxMapping" Id="{13404ae5-7de6-4653-9dd8-6f783f50ad44}">
+    <Declaration><![CDATA[TYPE ST_RxMapping :
+STRUCT
+	i_bRun				: BOOL; // Mapping is ignored if set false.
+	i_stCanMsg			: ST_CanMsg; // See CAN header informaiton for information rx mapper checks against. If MsgLength is less then i_cbDestSize return data is allow.
+	i_pDestAddr			: POINTER TO BYTE; // Make sure pointers are valid before calling mapper! You may have to detect online changes and re-initalize mapping info.
+	i_cbDestSize		: UDINT;// byte size of destination variable.
+	o_nUpdateCount		: UINT; // If pointer and/or destsize parameters are incorrect, this value will still update. Increments if Cobid, flags ExtenedAddress and RTR is valid.	
+	o_bBusy				: BOOL; // is true is data from recieved message is copied. 
+	o_bError			: BOOL; // true is an input parameter would prevent data from recieved message to be copied. 
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

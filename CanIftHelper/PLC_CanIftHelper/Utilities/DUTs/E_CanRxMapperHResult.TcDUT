@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="E_CanRxMapperHResult" Id="{df31b383-84e2-4b54-9bc1-3fe8b0012f97}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_CanRxMapperHResult :
+(
+	NoError := 0,
+	
+	RxMapperHasInvalidSetup			:= -1, // pCanItfHelper or nCanItfHelperSize parameters are invalid. 
+	CanHelperSetupIsInvalid			:= -2, // FB_CanItfHelper.bValidSetup = false
+	MappingSetupIsInvalid			:= -3, // paMappingData or nMappingDataSize parameters are invalid.
+	
+	InvalidParameter				:= -10, //generic error call parameters.
+	
+	RxMappingsListFull				:= -100, // nAddMappingIndex > GVL_CanItfHelper.nRxMapperUpperIndex, increase mapping list size, clear list and re-add and/or use another instance.
+	
+	
+	RxMappingDestSizeError			:= -200, // destination size is either size or is error causing size.
+	RxMappingDestPointerError		:= -201, // destination pointer is zero.
+	
+	//info / warnings
+	RxMappingNotRunning				:= 1, // Rx mapping bRun is false.
+	RxMappingHasError				:= 2 // FB_RxPdoMapper has a ST_RxPdoMapping in array aMappingData with an error. Fix issue and toggle bRun bit in ST_RxPdoMapping to clear error.			
+
+
+)DINT;
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

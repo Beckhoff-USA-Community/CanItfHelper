@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_CanMasterGlobalState" Id="{390b4d5c-8879-4714-b628-a1f4f661bb26}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '1'}
+TYPE ST_CanMasterGlobalState :
+STRUCT
+	DeviceState : UINT;(*  0: Device is in state RUN,  1: Device is in state RESET,  2: Device is in state OFFLINE,  3: Device is in state STOP*)
+	RxErrorCounter	: USINT;(* RxError-Counter of the CAN-Controller*)
+	TxErrorCounter : USINT; (*TxError-Counter of the CAN-Controller*)
+	CanControllerBUSOFF : BIT;
+	CanControllerWarningLimit : BIT;
+	RxQueueOverrun : BIT;
+	HiPrioTxQueueOverrun : BIT;
+	LoPrioTxQueueOverrun : BIT;
+	CanSendError : BIT;
+		{attribute 'hide'}
+		_reserved6 : BIT;
+		{attribute 'hide'}
+		_reserved7 : BIT;
+		{attribute 'hide'}
+		_reserved8 : BIT;
+		{attribute 'hide'}
+		_reserved9 : BIT;
+		{attribute 'hide'}
+		_reserved10 : BIT;
+		{attribute 'hide'}
+		_reserved11 : BIT;
+		{attribute 'hide'}
+		_reserved12 : BIT;
+		{attribute 'hide'}
+		_reserved13 : BIT;
+		{attribute 'hide'}
+		_reserved14 : BIT;
+	SyncMsgToggle : BIT; // toggles with every SYNC message sent
+	BusLoad : UINT; // value in perecent [%]
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

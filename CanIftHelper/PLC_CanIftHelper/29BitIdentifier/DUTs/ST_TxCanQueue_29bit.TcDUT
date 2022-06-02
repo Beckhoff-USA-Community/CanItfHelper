@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <DUT Name="ST_TxCanQueue_29bit" Id="{da14fb89-38b7-4440-b390-4f5a567ebe37}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '1'}
+TYPE ST_TxCanQueue_29bit :
+STRUCT
+	nTxCounter: UINT; // Tx Handshake
+	nRxCounter: UINT; // Rx handshake
+	nNoOfmessages: UINT; // Number of messages relevent in Queue, ignore the rest.
+	aMessages: ARRAY[0..GVL_CanItfHelper.nTxQueueUpperIndex] OF ST_CanData_29bit;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

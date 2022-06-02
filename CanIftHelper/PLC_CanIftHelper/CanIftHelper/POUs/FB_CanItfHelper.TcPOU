@@ -1,0 +1,303 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="FB_CanItfHelper" Id="{1becd8a2-0976-4754-92a0-c2b01988fd93}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'hide_all_locals'}
+FUNCTION_BLOCK FB_CanItfHelper //Call FB once per task tick before calling methods.
+VAR_INPUT
+	pRxQueue 				: POINTER TO BYTE; //must pass either ST_RxCanQueue_11bit or ST_RxCanQueue_29bit
+	cbRxQueueSize 			: UDINT;
+	pTxQueue 				: POINTER TO BYTE; //must pass either ST_TxCanQueue_11bit or ST_TxCanQueue_29bit	
+	cbTxQueueSize 			: UDINT;	
+END_VAR
+VAR_OUTPUT
+	bValidSetup				: BOOL;// indictor that input pointers are non zero and sizes are correct.
+END_VAR
+
+VAR
+	pRxQueue_11bit 			: POINTER TO ST_RxCanQueue_11bit;
+	pTxQueue_11bit 			: POINTER TO ST_TxCanQueue_11bit;
+	pRxQueue_29bit 			: POINTER TO ST_RxCanQueue_29bit;
+	pTxQueue_29bit 			: POINTER TO ST_TxCanQueue_29bit;	
+	nTxSendTaskCnt			: UDINT; //Internal counter helps determine if mAddTxMessage is allowed to add more messages even though TxQueue. TxCounter is flagged to send new data. Intended to optimism Queue by enlimiting a race condition. 
+	nRxMsgReadedIndex 		: UINT; 
+	nTxMsgSendCnt 			: UINT;
+	bTxMsgSent				: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[THIS^.mCheckSetup();]]></ST>
+    </Implementation>
+    <Method Name="mCheckSetup" Id="{a8533bf0-788b-4a35-bfdc-56655cd7bd30}">
+      <Declaration><![CDATA[METHOD PRIVATE mCheckSetup : E_CanItfHelperHResult
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mCheckSetup := E_CanItfHelperHResult.NoError;
+
+IF	((cbRxQueueSize = SIZEOF(ST_RxCanQueue_11bit)) OR (cbRxQueueSize = SIZEOF(ST_RxCanQueue_29bit))) AND
+	((cbTxQueueSize = SIZEOF(ST_TxCanQueue_11bit)) OR (cbTxQueueSize= SIZEOF(ST_TxCanQueue_29bit))) AND
+	((pRxQueue <> 0) AND (pTxQueue <> 0)) THEN
+	
+		pRxQueue_11bit := pRxQueue;
+		pTxQueue_11bit := pTxQueue;
+		pRxQueue_29bit := pRxQueue;
+		pTxQueue_29bit := pTxQueue;
+		bValidSetup := TRUE;
+	ELSE
+		bValidSetup := FALSE;
+		mCheckSetup := E_CanItfHelperHResult.InvalidSetup;
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mRxMessageGet" Id="{3e824637-809c-42ee-abbd-63af2411ddac}">
+      <Declaration><![CDATA[METHOD mRxMessageGet : E_CanItfHelperHResult //Copies the top in the RxQueue to a ST_CanMessage.
+VAR_INPUT
+	bGetRemove : BOOL; // if true and method completes successfully -> message is removed from RxQueue. 
+	pRxCanMessage : POINTER TO ST_CanMsg; //Gets current CAN message on the next message in queue and overwrites value passed by reference stCanMsg, must pass type ST_CanMessage 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mRxMessageGet := THIS^.mCheckSetup();
+IF (mRxMessageGet < 0) THEN
+	RETURN;
+END_IF
+
+IF (pRxCanMessage = 0) THEN
+	mRxMessageGet := E_CanItfHelperHResult.InvalidPointer;
+	RETURN;
+END_IF
+
+IF (pRxQueue_11bit^.nRxCounter <> pTxQueue_11bit^.nRxCounter) THEN
+	nRxMsgReadedIndex := 0;
+END_IF
+
+IF (pRxQueue_11bit^.nNoOfmessages = nRxMsgReadedIndex) AND (pRxQueue_11bit^.nRxCounter = pTxQueue_11bit^.nRxCounter) THEN
+	mRxMessageGet := E_CanItfHelperHResult.RxQueueEmpty;
+	RETURN;
+END_IF
+
+IF (pRxQueue_11bit^.nNoOfmessages < nRxMsgReadedIndex) THEN
+	nRxMsgReadedIndex := 0;
+	mRxMessageGet := E_CanItfHelperHResult.RxMessageInvalid;
+	RETURN;
+END_IF
+
+IF (THIS^.cbRxQueueSize = SIZEOF(ST_RxCanQueue_11bit)) THEN
+	pRxCanMessage^.CanData := pRxQueue_11bit^.aMessages[nRxMsgReadedIndex MOD Param_CanItfHelper.nRxQueueSize].aData;
+	pRxCanMessage^.CanHeader := F_HwGetAddrInfo_11bit(nInput := pRxQueue_11bit^.aMessages[nRxMsgReadedIndex MOD Param_CanItfHelper.nRxQueueSize].nCobid);
+	mRxMessageGet := E_CanItfHelperHResult.NoError;
+	IF bGetRemove THEN
+		nRxMsgReadedIndex := nRxMsgReadedIndex + 1;
+	END_IF
+END_IF
+
+IF (THIS^.cbRxQueueSize = SIZEOF(ST_RxCanQueue_29bit)) THEN
+	pRxCanMessage^.CanData := pRxQueue_29bit^.aMessages[nRxMsgReadedIndex MOD Param_CanItfHelper.nRxQueueSize].aData;
+	pRxCanMessage^.CanHeader := F_HwGetAddrInfo_29bit(stInput := pRxQueue_29bit^.aMessages[nRxMsgReadedIndex MOD Param_CanItfHelper.nRxQueueSize]);
+	mRxMessageGet := E_CanItfHelperHResult.NoError;
+	IF bGetRemove THEN
+		nRxMsgReadedIndex := nRxMsgReadedIndex + 1;
+	END_IF
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mRxMessagesAck" Id="{fda1bc42-d0a2-4149-9def-da1278378019}">
+      <Declaration><![CDATA[METHOD mRxMessagesAck : E_CanItfHelperHResult //ackownledge current RxMessages to new RxMessages to be recieved. NOTE: Call this at the end of the PLC task cycle.
+VAR_INPUT
+	bForceAck : bool;	//If true, RxQueue is ackownledged even if there are un read messages.
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mRxMessagesAck := THIS^.mCheckSetup();
+IF (mRxMessagesAck < 0) THEN
+	RETURN;
+END_IF
+
+
+IF (pRxQueue_11bit^.nRxCounter <> pTxQueue_11bit^.nRxCounter) THEN
+	
+	IF ((pRxQueue_11bit^.nNoOfmessages = nRxMsgReadedIndex) OR (bForceAck = TRUE)) THEN
+		pTxQueue_11bit^.nRxCounter := pRxQueue_11bit^.nRxCounter;
+		nRxMsgReadedIndex := 0;
+		mRxMessagesAck := E_CanItfHelperHResult.NoError;
+	ELSE
+		mRxMessagesAck := E_CanItfHelperHResult.RxQueueHasUnreadMessages;
+	END_IF
+	
+ELSE	
+	mRxMessagesAck :=	E_CanItfHelperHResult.NoNewRxMessages;
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mTxMessageAdd" Id="{b3ce3955-a3ab-4bc2-b6e1-6e90af4418f9}">
+      <Declaration><![CDATA[METHOD mTxMessageAdd : E_CanItfHelperHResult
+VAR_INPUT
+	pTxCanMessage : POINTER TO ST_CanMsg; //Writes stCanQueue to queue, value passed by reference, must pass type ST_CanMessage
+END_VAR
+
+
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mTxMessageAdd := THIS^.mCheckSetup();
+IF (mTxMessageAdd < 0) THEN
+	RETURN;
+END_IF
+
+IF (pTxCanMessage = 0) THEN
+	mTxMessageAdd := E_CanItfHelperHResult.InvalidPointer;
+	RETURN;
+END_IF
+
+IF (pTxQueue_11bit^.nTxCounter <> pRxQueue_11bit^.nTxCounter) THEN
+	IF (nTxSendTaskCnt <> TwinCAT_SystemInfoVarList._TaskInfo[GETCURTASKINDEXEX()].CycleCount) THEN
+		mTxMessageAdd := E_CanItfHelperHResult.TxQueueIsBusy;
+		RETURN;
+	END_IF
+END_IF
+
+(* (pTxQueue_11bit^.nTxCounter = pRxQueue_11bit^.nTxCounter)*)
+IF bTxMsgSent AND (nTxSendTaskCnt <> TwinCAT_SystemInfoVarList._TaskInfo[GETCURTASKINDEXEX()].CycleCount) THEN
+	nTxMsgSendCnt := 0;
+	bTxMsgSent := FALSE;
+END_IF	
+IF (nTxMsgSendCnt > GVL_CanItfHelper.nTxQueueUpperIndex) THEN
+	mTxMessageAdd := E_CanItfHelperHResult.TxQueueFull;
+	RETURN;
+END_IF
+
+
+IF (THIS^.cbTxQueueSize = SIZEOF(ST_TxCanQueue_11bit)) THEN	
+	pTxQueue_11bit^.aMessages[nTxMsgSendCnt].nCobid := F_HwSetAddrInfo_11bit(pTxCanMessage^.CanHeader);
+	pTxQueue_11bit^.aMessages[nTxMsgSendCnt].aData := pTxCanMessage^.CanData;
+	nTxMsgSendCnt := nTxMsgSendCnt + 1;
+	mTxMessageAdd := E_CanItfHelperHResult.NoError;
+END_IF
+IF (THIS^.cbTxQueueSize = SIZEOF(ST_TxCanQueue_29bit)) THEN	
+	pTxQueue_29bit^.aMessages[nTxMsgSendCnt] := F_HwSetAddrInfo_29bit(pTxCanMessage^.CanHeader);
+	pTxQueue_29bit^.aMessages[nTxMsgSendCnt].aData := pTxCanMessage^.CanData;
+	nTxMsgSendCnt := nTxMsgSendCnt + 1;
+	mTxMessageAdd := E_CanItfHelperHResult.NoError;
+END_IF
+	
+	]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mTxMessgesSend" Id="{d00e97bc-4e9a-4598-a5b3-7a728be4db67}">
+      <Declaration><![CDATA[METHOD mTxMessgesSend : E_CanItfHelperHResult
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mTxMessgesSend := THIS^.mCheckSetup();
+IF (mTxMessgesSend < 0) THEN
+	RETURN;
+END_IF
+
+IF (pTxQueue_11bit^.nNoOfmessages > Param_CanItfHelper.nTxQueueSize) THEN
+	nTxMsgSendCnt := GVL_CanItfHelper.nTxQueueUpperIndex;
+	mTxMessgesSend := E_CanItfHelperHResult.TxQueueInvalid;
+	RETURN;
+END_IF	
+
+IF (pTxQueue_11bit^.nTxCounter <> pRxQueue_11bit^.nTxCounter)THEN
+	IF (nTxSendTaskCnt <> TwinCAT_SystemInfoVarList._TaskInfo[GETCURTASKINDEXEX()].CycleCount) THEN
+		mTxMessgesSend := E_CanItfHelperHResult.TxQueueIsBusy;
+		RETURN;
+	END_IF
+END_IF	
+
+(*(pTxQueue_11bit^.nTxCounter = pRxQueue_11bit^.nTxCounter)*)
+IF bTxMsgSent AND (nTxSendTaskCnt <> TwinCAT_SystemInfoVarList._TaskInfo[GETCURTASKINDEXEX()].CycleCount) THEN
+	mTxMessgesSend := E_CanItfHelperHResult.TxQueueEmpty;
+	nTxMsgSendCnt := 0;
+	bTxMsgSent := FALSE;
+	RETURN;
+END_IF
+
+
+(*(pTxQueue_11bit^.nTxCounter = pRxQueue_11bit^.nTxCounter)*)
+pTxQueue_11bit^.nTxCounter := pRxQueue_11bit^.nTxCounter + 1;
+pTxQueue_11bit^.nNoOfmessages := nTxMsgSendCnt;
+bTxMsgSent := TRUE;
+nTxSendTaskCnt := TwinCAT_SystemInfoVarList._TaskInfo[GETCURTASKINDEXEX()].CycleCount;
+mTxMessgesSend := E_CanItfHelperHResult.NoError;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mTxQueueReset" Id="{8ae54d77-114b-46dd-9c9e-7df34de29422}">
+      <Declaration><![CDATA[METHOD mTxQueueReset : E_CanItfHelperHResult
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mTxQueueReset := THIS^.mCheckSetup();
+IF (mTxQueueReset < 0) THEN
+	RETURN;
+END_IF
+
+IF ((THIS^.cbTxQueueSize = SIZEOF(ST_TxCanQueue_11bit)) OR (THIS^.cbTxQueueSize = SIZEOF(ST_TxCanQueue_29bit))) AND (pTxQueue<>0) THEN
+	MEMSET(destAddr := pTxQueue, 0, n := USINT_TO_UDINT(SIZEOF(pTxQueue)));
+	nTxMsgSendCnt := 0;
+	bTxMsgSent := FALSE;
+	mTxQueueReset := E_CanItfHelperHResult.NoError;
+ELSE
+	mTxQueueReset := E_CanItfHelperHResult.InvalidSetup;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_CanItfHelper">
+      <LineId Id="576" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_CanItfHelper.mCheckSetup">
+      <LineId Id="19" Count="1" />
+      <LineId Id="6" Count="10" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_CanItfHelper.mRxMessageGet">
+      <LineId Id="348" Count="1" />
+      <LineId Id="351" Count="39" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_CanItfHelper.mRxMessagesAck">
+      <LineId Id="145" Count="1" />
+      <LineId Id="148" Count="1" />
+      <LineId Id="105" Count="2" />
+      <LineId Id="134" Count="0" />
+      <LineId Id="126" Count="0" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="144" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="128" Count="0" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="130" Count="0" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="116" Count="2" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_CanItfHelper.mTxMessageAdd">
+      <LineId Id="445" Count="1" />
+      <LineId Id="448" Count="0" />
+      <LineId Id="404" Count="1" />
+      <LineId Id="407" Count="4" />
+      <LineId Id="414" Count="30" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_CanItfHelper.mTxMessgesSend">
+      <LineId Id="180" Count="2" />
+      <LineId Id="149" Count="29" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_CanItfHelper.mTxQueueReset">
+      <LineId Id="44" Count="2" />
+      <LineId Id="32" Count="8" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

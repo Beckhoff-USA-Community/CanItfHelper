@@ -1,0 +1,290 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="FB_RxMapper" Id="{ea900807-319e-44b8-ac4e-e45598fef5bb}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'hide_all_locals'}
+FUNCTION_BLOCK FB_RxMapper //See ST_RxMapping for more info.
+VAR_INPUT
+	bRun					: BOOL;
+	bAutoCreateMappings		: BOOL; //Be careful with this, can quickly cause the Rx Mapper to use a lot of CPU time. This can lead to cycle exceeds. Configure CAN Interface RxFilter is recommeded if used!
+	pCanItfHelper 			: POINTER TO FB_CanItfHelper;
+	cbCanItfHelperSize		: UDINT; 
+	paMappingData 			: POINTER TO ARRAY[0..65535] OF ST_RxMapping;
+	cbMappingDataSize		: UDINT;
+END_VAR
+VAR_OUTPUT
+	bBusy 					: BOOL;
+	bError					: BOOL;
+	eRxMapperHResult 		: E_CanRxMapperHResult;
+	nMappingCnt				: UDINT;
+END_VAR
+VAR
+	bUnmappedCanMsg			: BOOL;
+	nRxMapperUpperIndex		: UDINT;
+	nCobidtemp				: UDINT;
+	nPrevRxCounter 			: UINT;
+	index 					: UINT;
+	stTempCanMsg			: ST_CanMsg;
+	nMappingIndex 			: UDINT;
+	CanHelperHResult		: E_CanItfHelperHResult;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT bRun THEN
+	bBusy := FALSE;
+	RETURN;
+ELSE
+	bBusy := TRUE;
+END_IF
+
+eRxMapperHResult := mCheckSetup();
+IF (eRxMapperHResult < 0 ) THEN
+	bError := TRUE;
+	RETURN;
+END_IF
+
+eRxMapperHResult := E_CanRxMapperHResult.NoError;
+
+nRxMapperUpperIndex := (cbMappingDataSize / SIZEOF(ST_RxMapping))-1;
+
+FOR index:=0 TO GVL_CanItfHelper.nRxQueueUpperIndex BY 1 DO
+	MEMSET(destAddr := ADR(stTempCanMsg), 0, n:=SIZEOF(stTempCanMsg));
+	CanHelperHResult := pCanItfHelper^.mRxMessageGet(bGetRemove := TRUE, pRxCanMessage := ADR(stTempCanMsg));
+	IF CanHelperHResult >= 0 THEN
+		bUnmappedCanMsg := TRUE; //used later
+		FOR nMappingIndex:= 0 TO MIN(nMappingCnt-1 , nRxMapperUpperIndex) BY 1 DO
+			IF (paMappingData^[nMappingIndex].i_stCanMsg.CanHeader.nCobid = stTempCanMsg.CanHeader.nCobid) AND (paMappingData^[nMappingIndex].i_stCanMsg.CanHeader.bExtendedAddress = stTempCanMsg.CanHeader.bExtendedAddress) AND (paMappingData^[nMappingIndex].i_stCanMsg.CanHeader.bRTR = stTempCanMsg.CanHeader.bRTR) THEN
+				bUnmappedCanMsg := FALSE;
+				IF paMappingData^[nMappingIndex].i_bRun THEN
+					IF 	(paMappingData^[nMappingIndex].i_pDestAddr <> 0) AND 
+						(paMappingData^[nMappingIndex].i_cbDestSize <> 0) AND 
+						(paMappingData^[nMappingIndex].i_cbDestSize >= UINT_TO_UDINT(stTempCanMsg.CanHeader.nMsgLength)) THEN
+							paMappingData^[nMappingIndex].i_stCanMsg := stTempCanMsg;
+							MEMCPY(paMappingData^[nMappingIndex].i_pDestAddr ,ADR(paMappingData^[nMappingIndex].i_stCanMsg.CanData[0]), paMappingData^[nMappingIndex].i_stCanMsg.CanHeader.nMsgLength);
+							paMappingData^[nMappingIndex].o_bBusy := TRUE;
+							paMappingData^[nMappingIndex].o_nUpdateCount := paMappingData^[nMappingIndex].o_nUpdateCount +1;					
+					ELSE
+						paMappingData^[nMappingIndex].o_bError := TRUE;
+						eRxMapperHResult := E_CanRxMapperHResult.RxMappingHasError;
+					END_IF					
+				END_IF
+			END_IF
+		END_FOR
+		IF bUnmappedCanMsg AND bAutoCreateMappings THEN
+			eRxMapperHResult := THIS^.mCreateMsgMapping(bRun:=FALSE, stCanMsg:= stTempCanMsg,pDestAddr:= 0, cbDestSize := 0);
+		END_IF
+	END_IF
+END_FOR
+]]></ST>
+    </Implementation>
+    <Method Name="mAddMapping" Id="{9ed2d0bb-c61a-45d3-9723-0170ef273496}">
+      <Declaration><![CDATA[METHOD mAddMapping : E_CanRxMapperHResult
+VAR_INPUT
+	stInput		: ST_RxMapping;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mAddMapping := mCheckSetup();
+IF (mAddMapping < 0 ) THEN
+	bError := TRUE;
+	RETURN;
+END_IF
+
+nRxMapperUpperIndex := (cbMappingDataSize / SIZEOF(ST_RxMapping))-1;
+
+IF ((nMappingCnt > nRxMapperUpperIndex) OR (cbMappingDataSize = 0)) THEN
+	mAddMapping := E_CanRxMapperHResult.RxMappingsListFull;
+	RETURN;
+END_IF
+
+IF (stInput.i_bRun = FALSE) THEN
+	mAddMapping := E_CanRxMapperHResult.RxMappingNotRunning;
+END_IF
+
+IF stInput.i_cbDestSize < stInput.i_stCanMsg.CanHeader.nMsgLength THEN
+	mAddMapping := E_CanRxMapperHResult.RxMappingDestSizeError;
+END_IF
+
+IF (stInput.i_pDestAddr = 0) THEN
+	mAddMapping := E_CanRxMapperHResult.RxMappingDestPointerError;
+END_IF
+
+paMappingData^[nMappingCnt] := stInput;
+nMappingCnt := nMappingCnt + 1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mCheckSetup" Id="{9d53f300-9290-47b9-925c-e825ea4211d3}">
+      <Declaration><![CDATA[METHOD PRIVATE mCheckSetup : E_CanRxMapperHResult
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF ((cbMappingDataSize = 0) OR (paMappingData = 0)) THEN
+	mCheckSetup := E_CanRxMapperHResult.MappingSetupIsInvalid;
+	RETURN;
+END_IF
+
+IF ((pCanItfHelper = 0) OR (cbCanItfHelperSize <> SIZEOF(FB_CanItfHelper)))  THEN
+	bError := TRUE;
+	mCheckSetup := E_CanRxMapperHResult.RxMapperHasInvalidSetup;
+	RETURN;
+END_IF
+
+IF (NOT pCanItfHelper^.bValidSetup) THEN
+	mCheckSetup := E_CanRxMapperHResult.RxMapperHasInvalidSetup;
+	RETURN;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mClearMappings" Id="{5b5ed598-1cdc-4fb8-b23d-db46c556d4e1}">
+      <Declaration><![CDATA[METHOD mClearMappings : E_CanRxMapperHResult // clears all mappings paMappingData points to. Result always 0 NoError
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mClearMappings := mCheckSetup();
+IF (mClearMappings < 0 ) THEN
+	bError := TRUE;
+	RETURN;
+END_IF
+
+
+mClearMappings := E_CanRxMapperHResult.NoError;
+MEMSET(destAddr := ADR(paMappingData^), 0 , n:= SIZEOF(cbMappingDataSize)); //Pointer is to an array varaible, which is also a pointer. Clear the array not the array pointer.
+nMappingCnt := 0;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mCreateMsgMapping" Id="{aac49f03-2daf-4432-a68c-4e36c2f43d05}">
+      <Declaration><![CDATA[METHOD mCreateMsgMapping : E_CanRxMapperHResult
+VAR_INPUT
+	bRun: BOOL;
+	stCanMsg : ST_CanMsg;
+	pDestAddr : POINTER TO BYTE;
+	cbDestSize	: UDINT;
+END_VAR
+VAR
+	temp: ST_RxMapping;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mCreateMsgMapping := E_CanRxMapperHResult.NoError;
+
+temp.i_bRun := bRun;
+temp.i_stCanMsg := stCanMsg;
+temp.i_pDestAddr := pDestAddr;
+temp.i_cbDestSize:= cbDestSize;
+
+mCreateMsgMapping := This^.mAddMapping(temp);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mCreateNewMapping" Id="{b9ef7bd9-0c1b-422b-8f62-a64cdae4fb4f}">
+      <Declaration><![CDATA[METHOD mCreateNewMapping : E_CanRxMapperHResult
+VAR_INPUT
+	bRun: BOOL;
+	nCobid : DWORD;
+	nMsgLength : UINT;
+	pDestAddr : POINTER TO BYTE;
+	cbDestSize	: UDINT;
+END_VAR
+VAR
+	temp: ST_RxMapping;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mCreateNewMapping := E_CanRxMapperHResult.NoError;
+
+temp.i_bRun := bRun;
+temp.i_stCanMsg.CanHeader.nCobid := nCobid;
+temp.i_stCanMsg.CanHeader.nMsgLength := nMsgLength;
+temp.i_pDestAddr := pDestAddr;
+temp.i_cbDestSize:= cbDestSize;
+
+mCreateNewMapping := This^.mAddMapping(temp);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="mSetMappingCnt" Id="{1c9d09e7-bb4b-4a1b-befc-693c7d7043df}">
+      <Declaration><![CDATA[METHOD mSetMappingCnt : E_CanRxMapperHResult  // return true if successful, must be less then or equal to size of mapping array.
+VAR_INPUT
+	input : UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[mSetMappingCnt := mCheckSetup();
+IF (mSetMappingCnt < 0 ) THEN
+	bError := TRUE;
+	RETURN;
+END_IF
+
+nRxMapperUpperIndex := (cbMappingDataSize / SIZEOF(ST_RxMapping))-1;
+
+IF input > nRxMapperUpperIndex THEN
+	nMappingCnt := input;
+	mSetMappingCnt := E_CanRxMapperHResult.InvalidParameter;
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_RxMapper">
+      <LineId Id="1952" Count="5" />
+      <LineId Id="1998" Count="0" />
+      <LineId Id="1958" Count="4" />
+      <LineId Id="1965" Count="32" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RxMapper.mAddMapping">
+      <LineId Id="45" Count="3" />
+      <LineId Id="42" Count="1" />
+      <LineId Id="38" Count="1" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="30" Count="3" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="11" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RxMapper.mCheckSetup">
+      <LineId Id="6" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="12" Count="9" />
+      <LineId Id="11" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RxMapper.mClearMappings">
+      <LineId Id="20" Count="3" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="6" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RxMapper.mCreateMsgMapping">
+      <LineId Id="5" Count="0" />
+      <LineId Id="16" Count="1" />
+      <LineId Id="19" Count="3" />
+      <LineId Id="13" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RxMapper.mCreateNewMapping">
+      <LineId Id="31" Count="7" />
+      <LineId Id="15" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RxMapper.mSetMappingCnt">
+      <LineId Id="26" Count="3" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="10" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
