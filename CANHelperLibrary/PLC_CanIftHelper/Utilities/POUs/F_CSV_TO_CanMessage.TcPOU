@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="F_CSV_TO_CanMessage" Id="{95f7c800-eb35-0625-1f7f-cb3c6f1e0cb6}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'hide_all_locals'}
+FUNCTION F_CSV_TO_CanMessage : ST_CanMsg//input -> cobid ,datalength ,extended address ,rtr ,data
+VAR_INPUT
+	sInput: STRING;//all four deliminators required
+END_VAR
+VAR
+	//sWorkingValue : STRING;
+	nTemp: INT;
+	sDelim: STRING;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+sInput := F_ToUCase(in:= sInput);
+
+sDelim := Param_CanItfHelper.sCSV_deliminator; 
+
+nTemp := FIND(STR1 := sInput, STR2:= sDelim);
+F_CSV_TO_CanMessage.CanHeader.nCobid := STRING_TO_UDINT(LEFT(STR:= sInput,SIZE := nTemp));
+sInput :=RIGHT(STR:= sInput, SIZE:= LEN(sInput) - nTemp);
+
+nTemp := FIND(STR1 := sInput, STR2:= sDelim);
+F_CSV_TO_CanMessage.CanHeader.nMsgLength :=STRING_TO_UINT(LEFT(STR:= sInput,SIZE := nTemp));
+sInput :=RIGHT(STR:= sInput, SIZE:= LEN(sInput) - nTemp);
+
+nTemp := FIND(STR1 := sInput, STR2:= sDelim);
+F_CSV_TO_CanMessage.CanHeader.bExtendedAddress :=STRING_TO_BOOL(LEFT(STR:= sInput,SIZE := nTemp));
+sInput :=RIGHT(STR:= sInput, SIZE:= LEN(sInput) - nTemp);
+
+nTemp := FIND(STR1 := sInput, STR2:= sDelim);
+F_CSV_TO_CanMessage.CanHeader.bRTR :=STRING_TO_BOOL(LEFT(STR:= sInput,SIZE := nTemp));
+sInput :=RIGHT(STR:= sInput, SIZE:= LEN(sInput) - nTemp);
+
+HEXSTR_TO_DATA(sHex:=sInput,pData := ADR(F_CSV_TO_CanMessage.CanData), cbData := SIZEOF(F_CSV_TO_CanMessage.CanData));
+]]></ST>
+    </Implementation>
+    <LineIds Name="F_CSV_TO_CanMessage">
+      <LineId Id="105" Count="21" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

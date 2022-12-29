@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_RxCanQueue_29bit_CX2500_M510" Id="{344bbcf1-ee92-094c-1003-099f19bd37ed}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '1'}
+TYPE ST_RxCanQueue_29bit_CX2500_M510 :
+STRUCT
+	nTxCounter: UINT; // Tx Handshake
+	nRxCounter: UINT; // Rx handshake
+	nNoOfmessages: UINT; // Number of messages relevent in Queue, ignore the rest.
+	nTranactionNumber : UINT;
+	aMessages: ARRAY[0..GVL_CanItfHelper.nRxQueueUpperIndex] OF ST_CanData_29bit_CX2500_M510;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

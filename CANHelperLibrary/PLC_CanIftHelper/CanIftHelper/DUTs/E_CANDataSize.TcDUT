@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="E_CANDataSize" Id="{4b0a8425-2b31-043d-2aa5-64af230f39ee}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_CANDataSize :
+(
+	_11Bit,
+	_29Bit,
+	_29Bit_CX2500_M510,
+	Error := -1
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>
