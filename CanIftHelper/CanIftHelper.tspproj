@@ -1,0 +1,7 @@
+<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.32">
+  <Project ProjectGUID="{EF92D365-B882-427F-A57B-DE1514F49B1B}" ShowHideConfigurations="#x106">
+    <Plc>
+      <Project GUID="{A233F6CD-2237-4F05-A7C8-03C2B95BE638}" Name="PLC_CanIftHelper" PrjFilePath="PLC_CanIftHelper\PLC_CanIftHelper.plcproj" TmcFilePath="PLC_CanIftHelper\PLC_CanIftHelper.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" />
+    </Plc>
+  </Project>
+</TcSmProject>
