@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="F_HwGetAddrInfo_29bit_nTrans" Id="{17947e46-6faf-47b5-beea-039b2fd4662b}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'hide'}
+FUNCTION F_HwGetAddrInfo_29bit_nTrans : ST_CanHeader
+VAR_INPUT
+	stInput: ST_CanData_29bit_nTrans;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_HwGetAddrInfo_29bit_nTrans.nCobid := 16#3FFFFFFF AND UDINT_TO_DWORD(stInput.nCobid);// limits cobid to max value
+
+F_HwGetAddrInfo_29bit_nTrans.bRTR := stInput.nCobid.30;// gets RTR bit
+
+F_HwGetAddrInfo_29bit_nTrans.bExtendedAddress := stInput.nCobid.31;//gets extended address flag, if set raw can message had 29bit for identification on the wire.
+
+IF (stInput.nLength > 8) THEN
+	F_HwGetAddrInfo_29bit_nTrans.nMsgLength := 8;
+ELSE
+	F_HwGetAddrInfo_29bit_nTrans.nMsgLength := stInput.nLength;
+END_IF 
+]]></ST>
+    </Implementation>
+    <LineIds Name="F_HwGetAddrInfo_29bit_nTrans">
+      <LineId Id="43" Count="10" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="F_HwSetAddrInfo_11bit" Id="{8b3dc4a8-3fb3-07f4-0935-bef937b7ac10}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'hide'}
+FUNCTION F_HwSetAddrInfo_11bit : WORD
+VAR_INPUT
+	stInput: ST_CanHeader;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_HwSetAddrInfo_11bit := SHL((16#7FF AND DWORD_TO_WORD(stInput.nCobid)),5); //shift cobid from 0-10 to bits 5-16, limits cobid to max value
+
+F_HwSetAddrInfo_11bit.4 := stInput.bRTR;// gets RTR bit
+
+IF (stInput.nMsgLength > 8) THEN// returns the first bits 0-3 which is data length value, checks to make sure length is not greater than max data length (8);
+	F_HwSetAddrInfo_11bit := 8;//issue getting data length, set to max.
+ELSE
+	F_HwSetAddrInfo_11bit :=  F_HwSetAddrInfo_11bit OR UINT_TO_WORD(stInput.nMsgLength);// sets bits 0-3 which is can data length. 
+END_IF
+
+//Extended Indentifier isn't used.]]></ST>
+    </Implementation>
+    <LineIds Name="F_HwSetAddrInfo_11bit">
+      <LineId Id="50" Count="9" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

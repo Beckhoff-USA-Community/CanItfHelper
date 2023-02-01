@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_CanData_29bit" Id="{6a396675-0278-087e-150a-c48050eb361c}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '1'}
+TYPE ST_CanData_29bit :
+STRUCT
+	nLength: UINT; //values 0-8
+	nCobid: DWORD; // bits0-28 CAN Cobid; bit 30 CAN RTR flag; bit 31 clear -> 11bit CAN Indentifier, set -> 29bit CAN Indentifier.
+	aData: ARRAY[0..7] OF BYTE;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

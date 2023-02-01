@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="F_HwGetAddrInfo_11bit" Id="{5ecb035e-73cf-0bc1-2416-a37b54f111a7}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'hide'}
+FUNCTION F_HwGetAddrInfo_11bit : ST_CanHeader//function to map cobid, RTR and datalength to ST_CanHeader.
+VAR_INPUT
+	nInput: WORD;// bit 0-3 datalength, bit4 RTR, bit 5-16 Cobid
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_HwGetAddrInfo_11bit.nCobid := WORD_TO_DWORD( 16#7FF AND SHR(nInput,5)); //shift cobid from 5-16 to bits 0-10, limits cobid to max value
+
+F_HwGetAddrInfo_11bit.bRTR := nInput.4; // gets RTR bit
+
+F_HwGetAddrInfo_11bit.bExtendedAddress := FALSE; // 29bit is not used, set false;
+
+IF ((nInput AND 16#F) > 8) THEN // returns the first bits 0-3 which is data length value, checks to make sure length is not greater than max data length (8);
+	F_HwGetAddrInfo_11bit.nMsgLength := 8;//issue getting data length, set to max.
+ELSE
+	F_HwGetAddrInfo_11bit.nMsgLength := (nInput AND 16#F);// returns the first bits 0-3 which is data length value
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="F_HwGetAddrInfo_11bit">
+      <LineId Id="36" Count="9" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="Param_CanItfHelper" Id="{6a56a7f8-9c7d-0158-266f-965ad54edf42}">
+    <Declaration><![CDATA[{attribute 'global_init_slot' := '100'}
+{attribute 'qualified_only' := ''}
+{attribute 'parameterlist' := ''}
+VAR_GLOBAL CONSTANT
+	nTxQueueSize			: UINT := 10; // number of messages in Tx queue.
+	nRxQueueSize			: UINT := 10;// number of messages in Rx queue.
+	sCSV_deliminator		: STRING(2) := ','; // deliminator used in CSV functions.
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

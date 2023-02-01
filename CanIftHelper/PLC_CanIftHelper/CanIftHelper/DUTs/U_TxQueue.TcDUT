@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="U_TxQueue" Id="{991acbc1-eb6e-0952-3737-cb71a3d988b1}">
+    <Declaration><![CDATA[{attribute 'hide'} 
+TYPE U_TxQueue :
+UNION
+	pTxQueue_11bit 						: POINTER TO ST_TxCanQueue_11bit;
+	pTxQueue_29bit 						: POINTER TO ST_TxCanQueue_29bit;
+	pTxQueue_29bit_nTrans 				: POINTER TO ST_TxCanQueue_29bit_nTrans;
+END_UNION
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

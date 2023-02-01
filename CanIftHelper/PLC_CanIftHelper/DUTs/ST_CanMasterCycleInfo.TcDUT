@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_CanMasterCycleInfo" Id="{f4f879f0-9a36-042c-124a-b09c26378ffe}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '1'}
+TYPE ST_CanMasterCycleInfo :
+STRUCT
+	 	{attribute 'hide'}
+		_reserved1 : USINT;
+		 {attribute 'hide'}
+		_reserved2 : BIT;
+		 {attribute 'hide'}
+		_reserved3 : BIT;
+		 {attribute 'hide'}
+		_reserved4 : BIT;
+		 {attribute 'hide'}
+		_reserved5 : BIT;
+	deviceDiag : BIT; // 1 = Diagnosis Data changed, use ADS-Read (Port 200, Index-Group 0xF100) to get the data
+	syncError : BIT;//  reserved for future use
+	cycleToggle : BIT;// toggles with every cycle
+	cycleError : BIT;//  1 = at least one CANopen Slave has a NodeState unequal zero
+	cycleCounter : UINT;//  EL6751 increments this counter once when the cycle is finished and the the EtherCAT Input Data were updated
+	error : USINT;// indicates the number of CANopen slaves with a NodeState unequal zero
+		 {attribute 'hide'}
+		_reserved6 : USINT;
+	actualCycleTime : UINT;//  indicates the actual Cycle-Time
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

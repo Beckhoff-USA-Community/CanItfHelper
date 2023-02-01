@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_RxCanQueue_29bit_nTrans" Id="{96784a3c-cca5-4649-b7cb-0a5da0e6d1d5}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '1'}
+TYPE ST_RxCanQueue_29bit_nTrans :
+STRUCT
+	nTxCounter: UINT; // Tx Handshake
+	nRxCounter: UINT; // Rx handshake
+	nNoOfmessages: UINT; // Number of messages relevent in Queue, ignore the rest.
+	nTranactionNumber : UINT; // nTrans number of last sent TxMsg. Not used by FB_CanItfHelper.
+	aMessages: ARRAY[0..GVL_CanItfHelper.nRxQueueUpperIndex] OF ST_CanData_29bit_nTrans;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

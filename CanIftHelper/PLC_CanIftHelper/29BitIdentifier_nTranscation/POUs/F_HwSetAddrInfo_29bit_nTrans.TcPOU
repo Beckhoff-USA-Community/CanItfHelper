@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="F_HwSetAddrInfo_29bit_nTrans" Id="{79cd8140-f1e1-4ef9-b5a9-91d51a304453}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'hide'}
+FUNCTION F_HwSetAddrInfo_29bit_nTrans : ST_CanData_29bit_nTrans
+VAR_INPUT
+	stInput: ST_CanHeader;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_HwSetAddrInfo_29bit_nTrans.nCobid := 16#3FFFFFFF AND stInput.nCobid;
+
+IF (stInput.nCobid > 16#7FF AND NOT stInput.bExtendedAddress) THEN // check cobid and extended address flags is set correctly
+	stInput.bExtendedAddress := TRUE;//fix issue
+END_IF
+
+F_HwSetAddrInfo_29bit_nTrans.nCobid.31 := stInput.bExtendedAddress;//sets extended address flag, if set raw can message will have 29bit for identification on the wire.
+
+F_HwSetAddrInfo_29bit_nTrans.nCobid.30 := stInput.bRTR;// sets RTR bit
+
+IF (stInput.nMsgLength > 8) THEN
+	F_HwSetAddrInfo_29bit_nTrans.nLength := 8;
+ELSE
+	F_HwSetAddrInfo_29bit_nTrans.nLength := stInput.nMsgLength;
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="F_HwSetAddrInfo_29bit_nTrans">
+      <LineId Id="37" Count="14" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
