@@ -36,7 +36,7 @@ END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[mCheckSetup := E_CanItfHelperHResult.NoError;
 	
-IF (pRxQueue <> 0) AND (pTxQueue <> 0) THEN
+IF (pRxQueue = NULL) AND (pTxQueue = NULL) THEN
 	bValidSetup := FALSE;
 	mCheckSetup := E_CanItfHelperHResult.InvalidSetup;
 	RETURN;
