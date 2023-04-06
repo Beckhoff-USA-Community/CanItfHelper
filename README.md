@@ -21,3 +21,5 @@ The following components must be installed to run sample code:
 - [TE1000 TwinCAT 3 Engineering](https://www.beckhoff.com/en-en/products/automation/twincat/te1xxx-twincat-3-engineering/te1000.html) version 3.1.4024.0 or higher
 - Beckhoff CANopen Master
 -- [EL6751](https://www.beckhoff.com/en-us/products/i-o/ethercat-terminals/el6xxx-communication/el6751.html)
+
+-- [CX2500-M510](https://www.beckhoff.com/en-ca/products/ipc/embedded-pcs/cx20x0-intel-celeron-core-i7/cx2500-m510.html)
