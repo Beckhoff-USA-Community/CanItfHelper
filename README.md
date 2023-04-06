@@ -10,7 +10,7 @@ Should you have any questions regarding the provided sample code, please contact
 
 # Further Information
 
-Further Information on -- CAN itnerface -- can be found at the [Beckhoff Infosys](https://infosys.beckhoff.com) under the [CAN Interface Topic](https://infosys.beckhoff.com/content/1033/el6751/2519219467.html?id=682234135442548413).
+Further Information on -- CAN interface -- can be found at the [Beckhoff Infosys](https://infosys.beckhoff.com) under the [CAN Interface Topic](https://infosys.beckhoff.com/content/1033/el6751/2519219467.html?id=682234135442548413).
 
 Additional resource official [Beckhoff CAN Interface Documentation](https://download.beckhoff.com/download/document/io/infrastructure-components/can-interface_en.pdf).
 
